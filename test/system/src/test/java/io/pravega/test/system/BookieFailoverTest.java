@@ -191,17 +191,14 @@ public class BookieFailoverTest extends AbstractFailoverTests  {
             //scale down bookie
             Futures.getAndHandleExceptions(bookkeeperService.scaleService(2), ExecutionException::new);
 
-            log.info("Sleeping for 1 min");
-            Exceptions.handleInterrupted(() -> Thread.sleep(1 * 60 * 1000));
-
             long writeCounteBeforeSleep  = testState.getEventWrittenCount();
-            log.info("Write count after bookie failover after 1 min sleep {}", writeCounteBeforeSleep);
+            log.info("Write count after bookie failover {}", writeCounteBeforeSleep);
 
-            log.info("Sleeping for 1 min");
-            Exceptions.handleInterrupted(() -> Thread.sleep(1 * 60 * 1000));
+            log.info("Sleeping for 30s");
+            Exceptions.handleInterrupted(() -> Thread.sleep(30 * 1000));
 
             long writeCounteAfterSleep  = testState.getEventWrittenCount();
-            log.info("Write count after bookie failover after 2 mins sleep {}", writeCounteAfterSleep);
+            log.info("Write count after bookie failover after 30s sleep {}", writeCounteAfterSleep);
 
             Assert.assertTrue(writeCounteAfterSleep == writeCounteBeforeSleep);
             log.info("Writes failed when bookie is scaled down");
@@ -209,12 +206,11 @@ public class BookieFailoverTest extends AbstractFailoverTests  {
             //Bring back the bookie which was killed
             Futures.getAndHandleExceptions(bookkeeperService.scaleService(3), ExecutionException::new);
 
-            stopWriters();
+            long writeCount = testState.getEventWrittenCount();
+            log.info("Write count after bookie is brought back {}", writeCount);
+            Assert.assertTrue( writeCount > writeCounteAfterSleep);
 
-            //Also, verify writes happened after bookie is  brought back
-            long finalWriteCount = testState.getEventWrittenCount();
-            log.info("Final write count {}", finalWriteCount);
-            Assert.assertTrue( finalWriteCount > writeCounteAfterSleep);
+            stopWriters();
 
             stopReaders();
 
