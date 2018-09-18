@@ -15,4 +15,4 @@ You may obtain a copy of the License at
 
 We provide a Java library, which implements a convenient API for Writer and Reader applications to use.  The client library encapsulates the wire protocol that is used to convey requests and responses between Pravega Clients and the Pravega service.
 
-[Writer and Reader API](v0.3.1/javadoc/clients/index.html)
+[Writer and Reader API](http://pravega.io/docs/v0.3.0/javadoc/clients/index.html)
