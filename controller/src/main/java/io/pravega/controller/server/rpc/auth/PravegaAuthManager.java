@@ -11,7 +11,7 @@ package io.pravega.controller.server.rpc.auth;
 
 import io.grpc.ServerBuilder;
 import io.pravega.auth.AuthHandler;
-import io.pravega.common.auth.AuthenticationException;
+import io.pravega.auth.AuthenticationException;
 import io.pravega.controller.server.rpc.grpc.GRPCServerConfig;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,16 +41,16 @@ public class PravegaAuthManager {
     private AuthHandler getHandler(String handlerName) throws AuthenticationException {
         AuthHandler retVal;
         synchronized (this) {
-                retVal = handlerMap.get(handlerName);
-            }
-            if (retVal == null) {
+            retVal = handlerMap.get(handlerName);
+        }
+        if (retVal == null) {
             throw new AuthenticationException("Handler does not exist for method " + handlerName);
         }
         return retVal;
     }
 
     /**
-     * API to authenticate and authroize access to a given resource.
+     * API to authenticate and authorize access to a given resource.
      * @param resource The resource identifier for which the access needs to be controlled.
      * @param headers  Custom headers used for authentication.
      * @param level    Expected level of access.
@@ -63,7 +63,7 @@ public class PravegaAuthManager {
     }
 
     /**
-     * API to authenticate and authroize access to a given resource.
+     * API to authenticate and authorize access to a given resource.
      * @param resource The resource identifier for which the access needs to be controlled.
      * @param paramMap  Custom headers used for authentication.
      * @param level    Expected level of access.

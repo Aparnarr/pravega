@@ -39,7 +39,7 @@ public class CredentialsExtractorTest {
         assertEquals("Method is not picked up from properties",
                 config.getCredentials().getAuthenticationType(), "temp");
 
-        AssertExtensions.assertMapEquals("Paramters are not same",
+        AssertExtensions.assertMapEquals("Parameters are not same",
                 config.getCredentials().getAuthParameters(),
                 ImmutableMap.of("prop1", "prop1",
                         "prop2", "prop2",
@@ -80,7 +80,7 @@ public class CredentialsExtractorTest {
         //In case dynamic creds system property is true, the correct class should be loaded.
         properties.setProperty("pravega.client.auth.method", "DynamicallyLoadedCredsSecond");
         config = ClientConfig.builder().extractCredentials(properties, new HashMap<String, String>()).build();
-        Assert.assertEquals("Correct creds object should be loaded dynamically",
+        assertEquals("Correct creds object should be loaded dynamically",
                 config.getCredentials().getAuthenticationType(), "DynamicallyLoadedCredsSecond");
     }
 

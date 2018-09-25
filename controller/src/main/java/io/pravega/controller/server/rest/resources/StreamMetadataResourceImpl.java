@@ -9,7 +9,10 @@
  */
 package io.pravega.controller.server.rest.resources;
 
+import io.pravega.auth.AuthException;
 import io.pravega.auth.AuthHandler;
+import io.pravega.auth.AuthenticationException;
+import io.pravega.auth.AuthorizationException;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.impl.ReaderGroupManagerImpl;
 import io.pravega.client.netty.impl.ConnectionFactory;
@@ -18,9 +21,6 @@ import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.StreamConfiguration;
 import io.pravega.client.stream.impl.ClientFactoryImpl;
 import io.pravega.common.LoggerHelpers;
-import io.pravega.common.auth.AuthException;
-import io.pravega.common.auth.AuthenticationException;
-import io.pravega.common.auth.AuthorizationException;
 import io.pravega.controller.server.ControllerService;
 import io.pravega.controller.server.eventProcessor.LocalController;
 import io.pravega.controller.server.rest.ModelHelper;
@@ -106,7 +106,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         }
 
         try {
-            authenticate(createScopeRequest.getScopeName(), READ_UPDATE);
+            authenticateAuthorize(createScopeRequest.getScopeName(), READ_UPDATE);
         } catch (AuthException e) {
             log.warn("Create scope for {} failed due to authentication failure {}.", createScopeRequest.getScopeName(), e);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -133,7 +133,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         .thenAccept(x -> LoggerHelpers.traceLeave(log, "createScope", traceId));
     }
 
-    private void authenticate(String resourceName, AuthHandler.Permissions level) throws AuthException {
+    private void authenticateAuthorize(String resourceName, AuthHandler.Permissions level) throws AuthException {
         if (pravegaAuthManager != null ) {
             Map<String, String> map = null;
             List<String> authParams = headers.getRequestHeader(HttpHeaders.AUTHORIZATION);
@@ -175,7 +175,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         }
 
         try {
-            authenticate(scopeName + "/" + createStreamRequest.getStreamName(), READ_UPDATE);
+            authenticateAuthorize(scopeName + "/" + createStreamRequest.getStreamName(), READ_UPDATE);
         } catch (AuthException e) {
             log.warn("Create stream for {} failed due to authentication failure.", createStreamRequest.getStreamName());
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -226,7 +226,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         long traceId = LoggerHelpers.traceEnter(log, "deleteScope");
 
         try {
-            authenticate(scopeName, READ_UPDATE);
+            authenticateAuthorize(scopeName, READ_UPDATE);
         } catch (AuthException e) {
             log.warn("Delete scope for {} failed due to authentication failure.", scopeName);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -269,7 +269,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         long traceId = LoggerHelpers.traceEnter(log, "deleteStream");
 
         try {
-            authenticate(scopeName + "/" + streamName, READ_UPDATE);
+            authenticateAuthorize(scopeName + "/" + streamName, READ_UPDATE);
         } catch (AuthException e) {
             log.warn("Delete stream for {} failed due to authentication failure.", streamName);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -304,7 +304,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         long traceId = LoggerHelpers.traceEnter(log, "getReaderGroup");
 
         try {
-            authenticate(scopeName + "/" + readerGroupName, READ);
+            authenticateAuthorize(scopeName + "/" + readerGroupName, READ);
         } catch (AuthException e) {
             log.warn("Get reader group for {} failed due to authentication failure.", scopeName + "/" + readerGroupName);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -353,7 +353,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         long traceId = LoggerHelpers.traceEnter(log, "getScope");
 
         try {
-            authenticate(scopeName, READ);
+            authenticateAuthorize(scopeName, READ);
         } catch (AuthException e) {
             log.warn("Get scope for {} failed due to authentication failure.", scopeName);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -391,7 +391,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         long traceId = LoggerHelpers.traceEnter(log, "getStream");
 
         try {
-            authenticate(scopeName + "/" + streamName, READ);
+            authenticateAuthorize(scopeName + "/" + streamName, READ);
         } catch (AuthException e) {
             log.warn("Get stream for {} failed due to authentication failure.", scopeName + "/" + streamName);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -422,7 +422,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         long traceId = LoggerHelpers.traceEnter(log, "listReaderGroups");
 
         try {
-            authenticate(scopeName, READ);
+            authenticateAuthorize(scopeName, READ);
         } catch (AuthException e) {
             log.warn("Get reader groups for {} failed due to authentication failure.", scopeName);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -467,16 +467,35 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
     public void listScopes(final SecurityContext securityContext, final AsyncResponse asyncResponse) {
         long traceId = LoggerHelpers.traceEnter(log, "listScopes");
 
+        try {
+            authenticateAuthorize("/", READ);
+        } catch (AuthException e) {
+            log.warn("Get scopes failed due to authentication failure.", e);
+            asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
+            LoggerHelpers.traceLeave(log, "listScopes", traceId);
+            return;
+        }
+
         controllerService.listScopes()
-                .thenApply(scopesList -> {
-                    ScopesList scopes = new ScopesList();
-                    scopesList.forEach(scope -> scopes.addScopesItem(new ScopeProperty().scopeName(scope)));
-                    return Response.status(Status.OK).entity(scopes).build();
-                }).exceptionally(exception -> {
-                        log.warn("listScopes failed with exception: " + exception);
-                        return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-                }).thenApply(asyncResponse::resume)
-                .thenAccept(x ->  LoggerHelpers.traceLeave(log, "listScopes", traceId));
+                         .thenApply(scopesList -> {
+                             ScopesList scopes = new ScopesList();
+                             scopesList.forEach(scope -> {
+                                 try {
+                                     authenticateAuthorize(scope, READ);
+                                     scopes.addScopesItem(new ScopeProperty().scopeName(scope));
+                                 } catch (AuthException e) {
+                                     log.warn("Not adding {} to list because authentication exception.", scope, e);
+                                 }
+                             });
+                             return Response.status(Status.OK).entity(scopes).build(); })
+                         .exceptionally(exception -> {
+                             log.warn("listScopes failed with exception: ", exception);
+                             return Response.status(Status.INTERNAL_SERVER_ERROR).build(); })
+                         .thenApply(response -> {
+                             asyncResponse.resume(response);
+                             LoggerHelpers.traceLeave(log, "listScopes", traceId);
+                             return response;
+                         });
     }
 
     /**
@@ -492,7 +511,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         long traceId = LoggerHelpers.traceEnter(log, "listStreams");
 
         try {
-            authenticate(scopeName, READ);
+            authenticateAuthorize(scopeName, READ);
         } catch (AuthException e) {
             log.warn("List streams for {} failed due to authentication failure.", scopeName);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -541,7 +560,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         long traceId = LoggerHelpers.traceEnter(log, "updateStream");
 
         try {
-            authenticate(scopeName + "/" + streamName, READ_UPDATE);
+            authenticateAuthorize(scopeName + "/" + streamName, READ_UPDATE);
         } catch (AuthException e) {
             log.warn("Update stream for {} failed due to authentication failure.", scopeName + "/" + streamName);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -586,7 +605,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         long traceId = LoggerHelpers.traceEnter(log, "updateStreamState");
 
         try {
-            authenticate(scopeName + "/" + streamName, READ_UPDATE);
+            authenticateAuthorize(scopeName + "/" + streamName, READ_UPDATE);
         } catch (AuthException e) {
             log.warn("Update stream for {} failed due to authentication failure.", scopeName + "/" + streamName);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
@@ -637,7 +656,7 @@ public class StreamMetadataResourceImpl implements ApiV1.ScopesApi {
         long traceId = LoggerHelpers.traceEnter(log, "getScalingEvents");
 
         try {
-            authenticate(scopeName + "/" + streamName, READ);
+            authenticateAuthorize(scopeName + "/" + streamName, READ);
         } catch (AuthException e) {
             log.warn("Get scaling events for {} failed due to authentication failure.", scopeName + "/" + streamName);
             asyncResponse.resume(Response.status(Status.fromStatusCode(e.getResponseCode())).build());
