@@ -7,13 +7,35 @@ You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 -->
+
 # Pravega Concepts
+
+   *[Introduction](#introduction)
+   *[Streams](#streams)
+   *[Events](#events)
+   *[Writers Readers Reader Groups](#writers-readers-reader-groups)
+   *[Stream Segments](#stream-segments)
+     - [Events in a Stream Segment](#events-in-a-stream-segment)
+     - [Stream Segments and Connection Pooling](#stream-segments-and-connection-pooling)
+     - [Elastic Streams Auto Scaling](#elastic-streams-auto-scaling)
+     - [Events Stream Segments and Auto scaling](#events-stream-segments-and-auto-scaling)
+     - [Stream Segments and Reader Groups](#stream-segments-and-reader-groups)
+     - [Ordering Guarantees}(#ordering-guarantees)]
+     - [Reader Group Checkpoints](#reader-group-checkpoints)
+   *[Transactions](#transactions)
+   *[State Synchronizers](#state-synchronizers)
+   *[Architecture](#architecture)
+   *[Putting the Concepts Together](#putting-the-concepts-together)
+   *[A Note on Tiered Storage](#a-note-on-tiered-storage)
+     - [Stream Retention Policies](#stream-retention-policies)
+
+# Introduction
 
 Pravega is an open source storage system implementing **Streams** as first-class primitive for storing/serving continuous and unbounded data.
 
 Next, we overview the key concepts in Pravega. For a concise definition of key terms of Pravega concepts, please see [Terminology](terminology.md).
 
-## Streams
+# Streams
 
 Pravega organizes data into Streams. A Stream is a durable, elastic, append-only, unbounded sequence of bytes having good performance and strong consistency.  A Pravega Stream is
 similar to but more flexible than a "topic" in popular message oriented middleware such as [RabbitMQ](https://www.rabbitmq.com/) or [Apache Kafka](https://kafka.apache.org/).
@@ -34,7 +56,7 @@ Pravega Streams are divided into **Stream Segments** to handle a large volume of
 
 Applications, such as a Java program reading from an IoT sensor, write data to the tail (front) of the Stream. Analytics applications, such as a [Flink](https://flink.apache.org) or [Hadoop](https://hadoop.apache.org/) jobs, can read from any point in the Stream. Many applications can read and write the same Stream in parallel. Elasticity, scalability, support for large volume of Stream data and applications are the highlights of Pravega's design. More information on read and write operations in the Streams will be discussed in the [Readers and Writers](#writers-readers-reader-groups) section.
 
-## Events
+# Events
 
 Pravega's client API allows applications to write and read data to/from Pravega in the form of **Events**. An Event is represented as a set of bytes within a Stream. For example, an Event could be as simple as a small number of bytes containing a temperature reading from an IoT sensor composed of
 a timestamp, a metric identifier and a value. An Event could also be a web log data
@@ -47,7 +69,7 @@ Every Event has a **Routing Key**. A Routing Key is a string used by developers
 like "customer-id" or "machine-id" or a declared/user-defined string. For example, a Routing Key could be a date (to group Events together by time) or it could be a IoT sensor id (to group Events by
 machine). A Routing Key is important in defining the read and write semantics that Pravega guarantees.
 
-## Writers, Readers, Reader Groups
+# Writers, Readers, Reader Groups
 
 ![Reader Client](img/producer.consumer.client.new.png)
 
@@ -78,13 +100,13 @@ in parallel. A large amount of Stream data can be consumed by a coordinated grou
 For more details on the basics of working with Pravega Readers and Writers, please see [Working with Pravega: Basic Reader and
 Writer](basic-reader-and-writer.md#working-with-pravega-basic-reader-and-writer).
 
-## Stream Segments
+# Stream Segments
 
 A Stream is split into a set of shards or partitions generally referred as **Stream Segments**.
 
 ![Stream Segment](img/stream.segment.png) 
 
-### Events in a Stream Segment
+## Events in a Stream Segment
 
 The Stream Segments acts as a container for Events within the Stream. When an
 Event is written into a Stream, it is stored in one of the Stream Segments based
@@ -93,8 +115,15 @@ Stream Segments. Event Routing Keys are hashed to form a "key space". The key
 space is then divided into a number of partitions, corresponding to the number
 of Stream Segments. Consistent hashing determines of Events to Stream Segments.
 
+## Stream Segments and Connection pooling
 
-### Elastic Streams: Auto Scaling
+When an Event is written to the Stream by the Pravega Client it is written into one of the Stream Segments based on the Event Routing Key. These Segments which are a part of Segment Containers are managed by the different [Segment Store](segment-store-service.md) Service instances.
+
+At present the Pravega creates new connections to different Segment Stores for every Segment it is writing to. A new connection to a Segment Store is created even when multiple Segments are owned by the same Segment Store. Every Segment being read by the Pravega client maps to a new connection.
+The number of connections created increases if the user is writing and reading from multiple Streams.
+The goal of **connection pooling** is to ensure a common pool of connections between the client process and the Segment Stores, which does not require a linear growth of the number of connections with the number of Segments.
+
+## Elastic Streams: Auto Scaling
 
 A unique feature of Pravega is that the number of parallel Stream Segments in a Stream can automatically **grow** and **shrink** over time based on the I/O load it receives. This feature is known as **Auto Scaling**.
 
@@ -133,7 +162,7 @@ determines how a Stream handles the varying changes in its load. Pravega has thr
 
 3.  **Event-based**: Similar to the data-based scaling policy, but it uses number of Events instead of bytes.
 
-### Events, Stream Segments and AutoScaling
+## Events, Stream Segments and Auto Scaling
 
 
 As mentioned earlier in this section, that an Event is written into one of the Stream Segments. By considering Auto Scaling, Stream Segments performs bucketing of Events based on Routing Key and time. It is obvious that, at any given time, Events published to a Stream with a given value of Routing Key will appear in the same Stream Segment.
@@ -144,7 +173,7 @@ It is also worth emphasizing that Events are written only on the active Stream
 Segments. Stream Segments that are sealed do not accept writes. In the figure above,
 at time **now**, only Stream **Segments 3**, **6** and **4** are active and the entire key space is covered between those three Stream Segments.  
 
-### Stream Segments and Reader Groups
+## Stream Segments and Reader Groups
 
 Stream Segments play a major role in understanding the way Reader Groups work.
 
@@ -168,7 +197,7 @@ The number of Stream Segments change over time by using the Pravega's Auto Scali
 
 Applications can react to changes in the number of Stream Segments in a Stream by adjusting the number of Readers within a Reader Group to maintain optimal read parallelism. As a cool use case, Pravega may allow Flink to increase or decrease the number of task instances that are processing a Stream in parallel.
 
-### Ordering Guarantees
+## Ordering Guarantees
 
 A Stream comprises a set of Segments that can change over time. Segments that overlap in their area of key space have a defined order.
 
@@ -201,7 +230,7 @@ state represented by the Checkpoint.
 For more details on working with Reader Groups, Please see [Reader Group Basics](basic-reader-and-writer.md#readergroup-basics).
 
 
-## Transactions
+# Transactions
 
 Pravega supports Transactions. The idea of a Transaction is that a Writer can
 "batch" up a bunch of Events and commit them as a unit into a Stream. This is
@@ -227,7 +256,7 @@ Events published into a Transaction are visible to the Reader only after the Tra
 For more details on working with Transactions, please see [Working with Pravega:
 Transactions](transactions.md).
 
-## State Synchronizers
+# State Synchronizers
 
 Pravega implements various building blocks to materialize the Stream primitive. One of such building blocks, namely **State Synchronizer**, is aimed at coordinating processes in a distributed computing environment. Internally, the **State Synchronizer** uses a Pravega Stream to provide a synchronization
 mechanism for state shared between multiple processes running in a cluster and making it easier to build distributed applications. With State Synchronizer, an application developer can use Pravega to read and make changes to shared state consistently and perform optimistic locking. 
@@ -255,7 +284,7 @@ not at its best when many processes attempt for simultaneous updates on the same
 For more details on working with State Synchronizers, please see [Working with Pravega:
 State Synchronizer](state-synchronizer.md).
 
-## Architecture
+# Architecture
 
 The following figure depicts the components deployed by Pravega:
 
@@ -294,7 +323,7 @@ Library manages the interaction between the application code and Pravega via a
 custom TCP Wire Protocol.
 
 
-## Putting the Concepts Together
+# Putting the Concepts Together
 
 The concepts in Pravega are depicted in the following figure:
 
@@ -324,7 +353,7 @@ The concepts in Pravega are depicted in the following figure:
     writes. The rest of the Stream Segment is stored in Tier 2, providing high
     throughput read access with horizontal scalability and low cost. 
 
-## A Note on Tiered Storage
+# A Note on Tiered Storage
 
 To deliver an efficient implementation of Streams, Pravega is based on a tiered
 storage model.  Events are persisted in low latency/high IOPS storage (Tier 1
@@ -361,7 +390,7 @@ storage. We expect this Tier 2 to be typically deployed on spinning disks. Prave
 asynchronously migrates Events from Tier 1 to Tier 2 to reflect the different
 access patterns to Stream data. Tier 2 Storage is based on an HDFS model. 
 
-### Stream Retention Policies
+## Stream Retention Policies
 
 Pravega allows users to store data in Tier 2 as long as there is storage capacity available. But sometimes, users may not be interested to keep all the historical data related to a Stream. Instead, there are use-cases in which it may be useful to retain just a fraction of a Stream's data. For this reason, Streams can be configured with **Retention Policies**.  
 
