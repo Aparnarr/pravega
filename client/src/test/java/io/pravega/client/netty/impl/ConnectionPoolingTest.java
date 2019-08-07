@@ -166,7 +166,11 @@ public class ConnectionPoolingTest {
         ClientConfig clientConfig = ClientConfig.builder()
                 .controllerURI(URI.create((this.ssl ? "tls://" : "tcp://")
                                           + "localhost"))
+<<<<<<< HEAD
                 .trustStore(SecurityConfigDefaults.TLS_CA_CERT_PATH)
+=======
+                .trustStore("../config/cert.pem")
+>>>>>>> baf23192b1b805b20379c7b40d3527c1e2ca58e1
                 .maxConnectionsPerSegmentStore(1)
                 .build();
         ConnectionPoolImpl connectionPool = new ConnectionPoolImpl(clientConfig);
@@ -248,7 +252,11 @@ public class ConnectionPoolingTest {
         ClientConfig clientConfig = ClientConfig.builder()
                                                 .controllerURI(URI.create((this.ssl ? "tls://" : "tcp://")
                                                         + "localhost"))
+<<<<<<< HEAD
                                                 .trustStore(SecurityConfigDefaults.TLS_CA_CERT_PATH)
+=======
+                                                .trustStore("../config/cert.pem")
+>>>>>>> baf23192b1b805b20379c7b40d3527c1e2ca58e1
                                                 .maxConnectionsPerSegmentStore(1)
                                                 .build();
         ConnectionPoolImpl connectionPool = new ConnectionPoolImpl(clientConfig);

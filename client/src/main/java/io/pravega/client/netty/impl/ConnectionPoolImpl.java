@@ -118,7 +118,12 @@ public class ConnectionPoolImpl implements ConnectionPool {
         } else {
             // create a new connection.
             log.info("Creating a new connection to {}", location);
+<<<<<<< HEAD
             final FlowHandler handler = new FlowHandler(location.getEndpoint());
+=======
+            final AppendBatchSizeTracker batchSizeTracker = new AppendBatchSizeTrackerImpl();
+            final FlowHandler handler = new FlowHandler(location.getEndpoint(), batchSizeTracker);
+>>>>>>> baf23192b1b805b20379c7b40d3527c1e2ca58e1
             CompletableFuture<Void> establishedFuture = establishConnection(location, handler);
             connection = new Connection(location, handler, establishedFuture);
             prunedConnectionList.add(connection);
@@ -136,7 +141,12 @@ public class ConnectionPoolImpl implements ConnectionPool {
         Exceptions.checkNotClosed(closed.get(), this);
 
         // create a new connection.
+<<<<<<< HEAD
         final FlowHandler handler = new FlowHandler(location.getEndpoint());
+=======
+        final AppendBatchSizeTracker batchSizeTracker = new AppendBatchSizeTrackerImpl();
+        final FlowHandler handler = new FlowHandler(location.getEndpoint(), batchSizeTracker);
+>>>>>>> baf23192b1b805b20379c7b40d3527c1e2ca58e1
         CompletableFuture<Void> connectedFuture = establishConnection(location, handler);
         Connection connection = new Connection(location, handler, connectedFuture);
         ClientConnection result = connection.getFlowHandler().createConnectionWithFlowDisabled(rp);
@@ -246,7 +256,11 @@ public class ConnectionPoolImpl implements ConnectionPool {
                 }
                 p.addLast(
                         new ExceptionLoggingHandler(location.getEndpoint()),
+<<<<<<< HEAD
                         new CommandEncoder(handler::getAppendBatchSizeTracker),
+=======
+                        new CommandEncoder(handler.getBatchSizeTracker()),
+>>>>>>> baf23192b1b805b20379c7b40d3527c1e2ca58e1
                         new LengthFieldBasedFrameDecoder(WireCommands.MAX_WIRECOMMAND_SIZE, 4, 4),
                         new CommandDecoder(),
                         handler);

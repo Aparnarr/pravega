@@ -110,8 +110,13 @@ public class CommandEncoder extends MessageToByteEncoder<Object> {
                 segmentBeingAppendedTo = append.segment;
                 writerIdPerformingAppends = append.writerId;
                 writeMessage(new AppendBlock(session.id), out);
+<<<<<<< HEAD
                 if (ctx != null && currentBlockSize > (msgSize + TYPE_PLUS_LENGTH_SIZE)) {
                     ctx.executor().schedule(new BlockTimeouter(ctx.channel(), tokenCounter.incrementAndGet()),
+=======
+                if (ctx != null) {
+                    ctx.executor().schedule(new BlockTimeouter(ctx.channel(), currentBlockSize),
+>>>>>>> baf23192b1b805b20379c7b40d3527c1e2ca58e1
                                             blockSizeSupplier.getBatchTimeout(),
                                             TimeUnit.MILLISECONDS);
                 }

@@ -43,6 +43,10 @@ public class FlowHandler extends ChannelInboundHandlerAdapter implements AutoClo
     private final AtomicBoolean recentMessage = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
     @Getter
+<<<<<<< HEAD
+=======
+    private final AppendBatchSizeTracker batchSizeTracker;
+>>>>>>> baf23192b1b805b20379c7b40d3527c1e2ca58e1
     private final ReusableFutureLatch<Void> registeredFutureLatch = new ReusableFutureLatch<>();
     @VisibleForTesting
     @Getter(AccessLevel.PACKAGE)
